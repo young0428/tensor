@@ -5,36 +5,45 @@ from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("./mnist/data",one_hot=True)
 
 
-X = tf.placeholder(tf.float32,[None,28,28,1])
-Y = tf.placeholder(tf.float32,[None,10])
-d_prob = tf.placeholder(tf.float32)
 
-L1 = tf.layers.conv2d(X,32,[3,3])
-L1 = tf.layers.max_pooling2d(L1,[2,2],[2,2])
-L1 = tf.nn.dropout(L1,d_prob)
-
-L2 = tf.layers.conv2d(L1,64,[3,3])
-L2 = tf.layers.max_pooling2d(L2,[2,2],[2,2])
-L2 = tf.nn.dropout(L2,d_prob)
-
-L3 = tf.contrib.layers.flatten(L2)
-L3 = tf.layers.dense(L3,256,activation=tf.nn.relu)
-L3 = tf.nn.dropout(L3,d_prob)
-
-
-model = tf.layers.dense(L3,10,activation=None)
-
-
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=Y,logits=model))
-
-optimizer = tf.train.AdamOptimizer(0.001).minimize(cost)
-
-init = tf.global_variables_initializer()
-sess = tf.Session()
-sess.run(init)
-
+total_epoch = 100
 batch_size = 100
-total_batch = int(mnist.train.num_examples / batch_size)
+learning_rate = 0.0002
+n_hidden = 256
+n_input = 28*28
+n_noise = 128
+
+X = tf.placeholder(tf.float32,[None,n_input])
+Z = tf.placeholder(tf.float32,[None,n_noise])
+
+G_w1 = tf.Variable(tf.random_normal([n_noise,n_hidden],stddev=0.01))
+G_b1 = tf.Variable(tf.zeros([n_hidden]))
+G_w2 = tf.Variable(tf.random_normal([n_hidden,n_input],stddev=0.01))
+G_b2 = tf.variable(tf.zeros([n_input]))
+
+D_w1 = tf.Variable(tf.random_normal([n_input,n_hidden],stddev=0.01))
+D_w2 = tf.Variable(tf.random_normal([n_input,n_hidden],stddev=0.01))
+
+def generator(noise_z):
+	hidden = tf.nn.relu(tf.matmul(noise_z,G_w1)+G_b1)
+	output = tf.nn.sigmoid(tf.matmul(hidden,G_w2)+G_b2)
+	return output
+
+
+def discriminator(inputs):
+	hidden = tf.nn.relu(tf.matmul(inputs,D_w1))
+	output = tf.nn.sigmoid(tf.matmul(hidden,D_w2))
+	return output
+
+def get_noise(batch_size,n_noise):
+	return np.random.normal(size=(batch_size,n_noise))
+
+
+G = generator(Z)
+D_gene = discriminator(G)
+D_real = discriminator(X)
+
+
 
 for epoch in range(10):
 	total_cost = 0

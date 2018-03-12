@@ -6,103 +6,63 @@ mnist = input_data.read_data_sets("./mnist/data",one_hot=True)
 
 
 
-total_epoch = 100
-batch_size = 100
-learning_rate = 0.0002
-n_hidden = 256
-n_input = 28*28
-n_noise = 128
+learning_rate = 0.001
+total_epoch = 30
+batch_size = 128
+
+n_input = 28
+n_step = 28
+n_hidden = 128
 n_class = 10
 
 
-X = tf.placeholder(tf.float32,[None,n_input])
-Y = tf.placeholder(tf.float32,[None,n_class])
-Z = tf.placeholder(tf.float32,[None,n_noise])
+
+X = tf.placeholder(tf.float32,[None, n_step, n_input])
+Y = tf.placeholder(tf.float32,[None, n_class])
+w = tf.Variable(tf.random_normal([n_hidden,n_class]))
+b = tf.Variable(tf.random_normal([n_class]))
 
 
-def generator(noise,labels):
-	with tf.variable_scope('generator'):
-		inputs = tf.concat([noise,labels],1)
-		hidden = tf.layers.dense(inputs, n_hidden, activation = tf.nn.relu)
-		output = tf.layers.dense(hidden,n_input,activation = tf.nn.sigmoid)
-	return output
+cell = tf.nn.rnn_cell.BasicRNNCell(n_hidden)
+outputs, states = tf.nn.dynamic_rnn(cell,X,dtype=tf.float32)
+outputs = tf.transpose(outputs,[1,0,2])
+outputs = outputs[-1]
 
-
-def discriminator(inputs,labels,reuse=None):
-	with tf.variable_scope('discriminator') as scope:
-		if reuse :
-			scope.reuse_variables()
-
-		inputs = tf.concat([inputs,labels],1)
-		hidden = tf.layers.dense(inputs,n_hidden,activation = tf.nn.relu)
-		output = tf.layers.dense(hidden,1,activation=None)
-
-	return output
-
-
-def get_noise(batch_size,n_noise):	
-	return np.random.uniform(-1.,1.,size=[batch_size,n_noise])
-
-
-G = generator(Z,Y)
-D_gene = discriminator(G,Y)
-D_real = discriminator(X,Y,True)
-
-loss_D_gene = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = D_gene,labels=tf.zeros_like(D_gene)))
-loss_D_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = D_real,labels=tf.ones_like(D_real)))
-
-loss_D = loss_D_gene + loss_D_real
-
-loss_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = D_gene,labels=tf.ones_like(D_gene)))
-
-vars_D = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
-vars_G = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
-
-train_D = tf.train.AdamOptimizer(learning_rate).minimize(loss_D,var_list = vars_D)
-train_G = tf.train.AdamOptimizer(learning_rate).minimize(loss_G,var_list = vars_G)
+model = tf.layers.dense(outputs,10,activation=None)
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits = model,labels = Y))
+optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
 total_batch = int(mnist.train.num_examples / batch_size)
-val_loss_D, val_loss_G = 0,0
-
-
-
-
 
 
 
 for epoch in range(total_epoch):
+	total_cost = 0
 	for i in range(total_batch):
 		batch_xs, batch_ys = mnist.train.next_batch(batch_size)
-		noise = get_noise(batch_size,n_noise)
-		_,val_loss_D = sess.run([train_D,loss_D],feed_dict={X:batch_xs,Y:batch_ys,Z:noise})
-		_,val_loss_G = sess.run([train_G,loss_G],feed_dict={Y:batch_ys,Z:noise})
+		batch_xs = batch_xs.reshape((batch_size,n_step,n_input))
+
+		_,cost_val = sess.run([optimizer,cost],feed_dict={X:batch_xs,Y:batch_ys})
+		total_cost += cost_val 
 
 
 	print('Epoch:', '%04d'%(epoch+1),
-		  'D_loss = ','{:.3f}'.format(val_loss_D),
-		  'G_loss = ','{:.3f}'.format(val_loss_G))
-	if epoch == 0 or((epoch+1)%10) == 0 :
-		sample_size = 10
-		noise = get_noise(sample_size,n_noise)
-		samples = sess.run(G,feed_dict={Y:mnist.test.labels[:sample_size],Z:noise})
-
-		fig, ax = plt.subplots(2,sample_size,figsize=(sample_size,2))
-		for i in range(sample_size):
-			ax[0][i].set_axis_off()
-			ax[1][i].set_axis_off()
-
-			ax[0][i].imshow(np.reshape(mnist.test.images[i],(28,28)))
-			ax[1][i].imshow(np.reshape(samples[i],(28,28)))
-
-		plt.savefig('samples/{}.png'.format(str(epoch).zfill(3)),bbox_inches='tight')
-
-		plt.close(fig)
+		  'Avg.cost = ','{:.3f}'.format(total_cost/total_batch))
+	
 
 
 print('Train_done!!')
+
+accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(model,1),tf.argmax(Y,1)),tf.float32))
+
+test_batch_size = len(mnist.test.images)
+test_xs = mnist.test.images.reshape(test_batch_size,n_step,n_input)
+test_ys = mnist.test.labels
+
+print('accuracy:',sess.run(accuracy,feed_dict={X:test_xs,Y:test_ys}))
 
 
 

@@ -26,7 +26,7 @@ def make_batch(seq_data):
 
 learning_rate = 0.01
 n_hidden = 128
-total_epoch = 30
+total_epoch = 200
 
 n_step = 3
 n_input = n_class = dic_len

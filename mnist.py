@@ -27,11 +27,15 @@ L2 = tf.nn.dropout(L2,prob)
 
 model = tf.layers.dense(L2,10,activation=None)
 
+print(model)
+
 
 
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=Y,logits=model))
 
 optimizer = tf.train.AdamOptimizer(0.005).minimize(cost)
+
+print()
 
 
 sess = tf.Session()
@@ -62,9 +66,11 @@ print('Accuracy:',sess.run(accuracy,feed_dict={X:mnist.test.images,Y:mnist.test.
 fig = plt.figure()
 cnt = 0
 false_cnt = 0
+print(mnist.test.images)
 labels = sess.run(model,feed_dict={X:mnist.test.images,
 								   Y:mnist.test.labels,
 								   prob: 1})
+print(labels[0])
 for bl in sess.run(tf.cast(is_correct,tf.float32),feed_dict={X:mnist.test.images,Y:mnist.test.labels,prob:1}):
 	if bl == 0:
 		subplot = fig.add_subplot(4,5,false_cnt+1)

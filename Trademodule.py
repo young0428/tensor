@@ -1,6 +1,7 @@
 import urllib.request
 import json
 import datetime
+import random
 
 #(판매가격)
 url = "https://api.bithumb.com/public/ticker/BTC"
@@ -54,6 +55,42 @@ def get_all_data():
 
     f.close()
     return data_len, data_dic
+
+def get_all_data_timestamp():
+    f = open('./data/timestamp_data.txt','r')
+    data = f.readlines()
+    data_dic = []
+    data_len = len(data)
+    for i in data:
+        space_index = i.find(' ')
+        timestamp = i[0:space_index]
+        price = i[space_index+1:-2]
+        d = []
+        d.append(timestamp)
+        d.append(price)
+        data_dic.append(d)
+
+    f.close()
+    return data_len, data_dic
+
+def get_startpoint(data_dic,input_size,period):
+    for i in range(data_dic):
+        if int(data_dic[i][0]) > 1520851271 : #12월 15일 기준
+            start_point = []
+            start_point.append(random.randrange(input_size,i))
+            start_point.append(random.randrange(input_size,i))
+            start_point.append(random.randrange(i,len(data_dic)-period-1))
+            start_point.append(random.randrange(i,len(data_dic)-period-1))
+            break
+
+    return start_point
+
+
+
+
+
+
+
 
 
 

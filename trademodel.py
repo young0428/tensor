@@ -1,15 +1,20 @@
-import tensorflow as tf
+import tensorflow as 
+import numpy as np
+
+from TradeAlgorithm import calc_score
 
 
 class DQN:
-	tran_size = 12*12
+	tran_size = 12*24
 	BATCH_SIZE = 4
-	def __init__(self,session,transaction,n_act):
+	def __init__(self,session,data_dic,data_len,possess,n_act,BATCH_SIZE):
 		self.n_act = n_act
 		self.session = session
-		self.tran = []
+		self.BATCH_SIZE = BATCH_SIZE
+		self.possess = possess
+		self.data_dic = data_dic
 
-		self.X = tf.placeholder(tf.float32,[None])
+		self.X = tf.placeholder(tf.float32,[BATCH_SIZE,None])
 		self.Y = tf.placeholder(tf.float32,[None])
 		self.A = tf.placeholder(tf.float32,[None])
 
@@ -19,7 +24,7 @@ class DQN:
 
 	def build_network(self,name):
 		with tf.variable_scope(name):
-			model = tf.layers.dense(self.X,256,activation=tf.nn.relu)
+			model = tf.layers.dense(self.X,1024,activation=tf.nn.relu)
 			model = tf.layers.dense(model,512,activation=tf.nn.relu)
 			Q = tf.layers.dense(model,self.n_act,activation=None)
 
@@ -45,6 +50,37 @@ class DQN:
 
         self.session.run(copy_op)
 
+    def remember(self,cur_index, next_index, possess):
+    	self.cur_index = cur_index
+    	self.next_index = next_index
+    	self.possess = possess
+
     def get_action(self):
-    	Q_value = session.run(self.Q,feed_dict={X:self.tran})
-    	action = np.argmax()
+    	Q_value = sess.run(self.Q, feed_dict={X:self.index_to_dic(cur_index)})
+    	action_list = []
+    	for i in range(BATCH_SIZE):
+    		if self.possess[i] > 0:
+    			action_list.append(np.argmax(Q_value[i][1:3])+1)
+    		else:
+    			action_list.append(np.argmax(Q_value[i][:2]))
+
+    	return action_list
+
+
+    def index_to_dict(self,index_list):
+    	tran_dic = []
+    	for i in range(BATCH_SIZE):
+    		tran_dic.append(data_dic[index_list[i]-tran_size+1]:index_list[i]+1)
+
+    	return tran_dic
+
+    def step(self,action):
+    	reward = []
+    	for i in range(BATCH_SIZE):
+    		reward, possess = TradeAlgorithm.calc_score(data_dic, action, possess)
+
+
+
+
+
+    	return reward, possess

@@ -4,6 +4,7 @@ import datetime
 import random
 
 #(판매가격)
+"""
 url = "https://api.bithumb.com/public/ticker/BTC"
 url_rest = "https://api.bithumb.com/public/orderbook/BTC"
 url_past_data = "https://api.bithumb.com/public/recent_transactions/BTC"
@@ -21,6 +22,7 @@ data = js['data']
 data_rest = js_rest['data']
 timestamp = int(data['date'])
 time = datetime.datetime.fromtimestamp(timestamp/1000)
+"""
 
 
 def get_sell_price():
@@ -73,17 +75,19 @@ def get_all_data_timestamp():
     f.close()
     return data_len, data_dic
 
-def get_startpoint(data_dic,input_size,period):
-    for i in range(data_dic):
-        if int(data_dic[i][0]) > 1520851271 : #12월 15일 기준
+def get_startpoint(data_dic,input_size,period,BATCH_SIZE):
+    for i in range(len(data_dic)):
+        if int(data_dic[i][0]) > 1513223100 : #12월 15일 기준
             start_point = []
-            start_point.append(random.randrange(input_size,i))
-            start_point.append(random.randrange(input_size,i))
-            start_point.append(random.randrange(i,len(data_dic)-period-1))
-            start_point.append(random.randrange(i,len(data_dic)-period-1))
+            for j in range(int(BATCH_SIZE/2)):
+                start_point.append(random.randrange(input_size,i))
+            for j in range(int(BATCH_SIZE/2+(BATCH_SIZE%2))):
+                start_point.append(random.randrange(i,(len(data_dic)-period-1)))
             break
 
     return start_point
+
+
 
 
 

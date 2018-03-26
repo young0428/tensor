@@ -79,11 +79,16 @@ def get_startpoint(data_dic,input_size,period,BATCH_SIZE):
     for i in range(len(data_dic)):
         if int(data_dic[i][0]) > 1513223100 : #12월 15일 기준
             start_point = []
-            for j in range(int(BATCH_SIZE/2)):
+            for j in range(int(BATCH_SIZE/3)):
                 start_point.append(random.randrange(input_size,i))
-            for j in range(int(BATCH_SIZE/2+(BATCH_SIZE%2))):
+            for j in range(int(BATCH_SIZE-int(BATCH_SIZE/3))):
+                start_point.append(random.randrange(i-1,(len(data_dic)-period-1)))
+            """
+            for j in range(int(BATCH_SIZE)):
                 start_point.append(random.randrange(i,(len(data_dic)-period-1)))
+            """
             break
+            
 
     return start_point
 

@@ -26,10 +26,9 @@ class DQN:
 
 	def build_network(self,name):
 		with tf.variable_scope(name):
-
 			model = tf.layers.conv1d(self.input_X,64,6,activation=tf.nn.relu)
 			model = tf.nn.dropout(model, self.keep_prob)
-			model = tf.layers.conv1d(model,128,[3],activation=tf.nn.relu)
+			model = tf.layers.conv1d(model,128,3,activation=tf.nn.relu)
 			model = tf.nn.dropout(model,self.keep_prob)
 			model = tf.layers.dense(model,512,activation=tf.nn.relu)
 
@@ -75,13 +74,14 @@ class DQN:
 		ud = 0
 		for i in range(self.BATCH_SIZE):
 			a = []
-			tran_dic = self.data_dic[(index_list[i]-self.tran_size):index_list[i]+1]
+			tran_dic = self.data_dic[(index_list[i]-self.tran_size):index_list[i]+1]	
 			for j in range(len(tran_dic)-1):
 				md = []
 				md.append(tran_dic[j+1][1] - tran_dic[j][1])
 				a.append(md)
 
 			col.append(a)
+
 
 		return col
 

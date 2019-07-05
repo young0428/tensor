@@ -2,10 +2,13 @@ import urllib.request
 import json
 import datetime
 
-url = 'https://poloniex.com/public?command=returnChartData&currencyPair=USDT_BTC&start=1496275200&end=9999999999&period=300'
+url = 'https://poloniex.com/public?command=returnChartData&currencyPair=USDT_BTC&start=1496275200&end=1496285200&period=300'
 api = urllib.request.urlopen(url).read()
 
+print(type(api))
+print(api)
 js = json.loads(api)
+"""
 f = open('./data/timestamp_data.txt','w')
 f_2 = open('./data/time_data.txt','w')
 
@@ -25,3 +28,4 @@ for i in js:
 
 f.close()
 f_2.close()
+"""

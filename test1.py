@@ -1,2 +1,2 @@
-from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
-print_tensors_in_checkpoint_file(file_name='./test_debug/test.ckpt-6', tensor_name='', all_tensor_names='', all_tensors=True)
+import os
+print(os.path.exists('./finstate/finstate_all/2016_1Q.txt'))

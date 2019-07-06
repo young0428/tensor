@@ -11,6 +11,7 @@ url = "https://finance.daum.net/api/charts/A005930/5/minutes?limit=216&adjusted=
 hdr = {'referer' : 'https://finance.daum.net/domestic/chart', 'user-agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36'}
 req = urllib.request.Request(url,headers=hdr)
 res = urllib.request.urlopen(req)
+#print(res.read())
 js = json.loads(res.read())
 text = ''
 while(len(js['data']) == 216):

@@ -1,2 +1,2 @@
-import os
-print(os.path.exists('./finstate/finstate_all/2016_1Q.txt'))
+a = ['a b c','c a b','b c a']
+print(a[1].split()[2])

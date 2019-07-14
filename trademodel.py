@@ -91,7 +91,7 @@ class DQN:
 
 	def train(self,reward,action):
 		target_Q_value = self.sess.run(self.target_Q,feed_dict={self.input_X:self.index_to_dic(self.next_index),self.keep_prob:0.9})
-		Y = []
+		Y = [] 
 
 		for i in range(self.BATCH_SIZE):
 			Y.append(reward[i] + np.max(target_Q_value[i]))

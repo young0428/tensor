@@ -36,59 +36,82 @@ for z in range(3,17):
         data = f.readline()
         if not(data):
             for i in range(44):
-                fopen.write(cp_name + ' ' + code_val + ' ' + word[i] + ' ' + wordlist[i] + '\n')
+                fopen.write(cp_name + ' ' + code_val + ' ' + word[i] + ' ' + wordlist[i].replace(',','') + ' ' + wordlist2[i].replace(',','') + '\n')
+            wordlist = ['0']*44
+            wordlist2 = ['0']*44
             break
-        data = data.split()
-        for i in data:
-            l = 0
-            for j in word:
-                if(i == j):
-                    index = cnt
-                    list_num = l
-                    break
-                l += 1
-            if(index != 0 ):
+
+        data = data.split('\t')
+        for i in range(len(data)):
+            data[i] = data[i].replace(' ','').replace('\n','')
+
+
+        l = 0
+        for j in word:
+            if '매출채권' in data[11]:
+                index = 11
+                list_num = 2
+            elif(data[11] == j):
+                index = 11
+                list_num = l
                 break
-            cnt += 1
+            l += 1
+
         
         if(index != 0):
-            code = data[2].replace('[','').replace(']','')
+            code = data[1].replace('[','').replace(']','')
             if(code_val != code):
                 if(filepath != ''):
                     for i in range(44):
-                        fopen.write(cp_name + ' ' + code_val + ' ' + word[i] + ' ' + wordlist[i] + ' ' + wordlist2[i] + '\n')
+                        fopen.write(cp_name + ' ' + code_val + ' ' + word[i] + ' ' + wordlist[i].replace(',','') + ' ' + wordlist2[i].replace(',','') + '\n')
+                        if code_val=='009830' and word[i] == '자본조정':
+                            print(cp_name + ' ' + code_val + ' ' + word[i] + ' ' + wordlist[i].replace(',','') + ' ' + wordlist2[i].replace(',','') + '\n')
+    
                     wordlist = ['0']*44
                     wordlist2 = ['0']*44
                     fopen.close()
-                 
+              
                 filepath = './finstate/'+str(code)+'.txt'
                 if(os.path.exists(filepath)):
                     option = 'a'
-                else:
+                else:   
                     option = 'w'
                     cp_index_list.append(str(code))
                 fopen = open(filepath,option)
                 fopen.write('date : '+ data[find_date_index(data)] + '\n')
+
             if(len(data) >= index+1+1):
                 x1 = data[index+1]
             if(len(data) >= index+1+2):
                 x2 = data[index+2]
+            if x1=='':
+                x1 = '0'
+            if x2=='':
+                x2 = '0'
+          #  if data[11] == '자본조정' and data[1] == '[009830]':
+            #    print(data)
             wordlist[list_num] = x1
             wordlist2[list_num] = x2
-            cp_name = data[3]
+            cp_name = data[2]
             x1 = '0'
+            x2 = '0'
             code_val = code
             index = 0
 
-        if(a % 100 == 0):
-            print(str(a)+'/'+str(line_num) + ' - ' + str(z-3) + '/' + str(14))
+       # if(a % 100 == 0):
+           # print(str(a)+'/'+str(line_num) + ' - ' + str(z-3) + '/' + str(14))
+
+        
 
     f.close()
-    fopen.close()
+    
+    
+
 f = open('./finstate/code_list.txt','w')
 for i in cp_index_list:
     f.write(i + '\n')
 f.close()
+
         
                 
 

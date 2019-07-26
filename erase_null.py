@@ -7,7 +7,7 @@ cnt = 0
 for code in codelist:
 	code = code[:-1]
 	if os.path.exists('./stockdata/'+code+'.txt'):
-		if os.path.getsize('./stockdata/'+code+'.txt') < 100:
+		if os.path.getsize('./stockdata/'+code+'.txt') < 200:
 			print('Delete :',code)
 			os.remove('./stockdata/'+code+'.txt')
 			code = ''

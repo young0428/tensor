@@ -7,7 +7,7 @@ def find_date_index(data):
             if(i.count('-') == 2):
                 return ct
             ct += 1
-for z in range(3,17):
+for z in range(3,16):
     data_file_name = str(2015+int(z/4)) + '_' + str(z%4+1) + 'Q'
     f = open('./finstate/finstate_all/'+ data_file_name +'.txt','r')
     f.readline()

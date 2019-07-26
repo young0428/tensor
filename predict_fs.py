@@ -3,62 +3,11 @@ import numpy as np
 import random
 from datetime import datetime
 import time
-
-def ck_data(code):
-	f = open('./finstate/'+code+'.txt','r')
-	filedata = f.readlines()
-	cnt = 0
-	date_index = []
-	for i in filedata:
-		i = i.replace('\n','')
-		filedata[cnt] = i
-		if 'date' in i:
-			date_index.append(cnt)
-		cnt+=1
-
-
-	date_index = random.sample(date_index,len(date_index))
-	stock_f = open('./stockdata/'+code+'.txt','r')
-	stock_data = stock_f.readlines()
-	for i in date_index:
-		date = filedata[i].replace('date : ','')+' 00:00:00'
-		dt = datetime.strptime(date,'%Y-%m-%d %H:%M:%S').timetuple()
-		timestamp = int(time.mktime(dt))
-		if int(stock_data[0][:-1].split()[1]) >= timestamp or int(stock_data[len(stock_data)-1][:-1].split()[1]) <= timestamp+86400*61:
-			continue
-		cnt = 0
-		bl = True
-		
-		for j in stock_data:
-			j = j[:-1].split()
-			if timestamp <= int(j[1]) and bl:
-				start_index = cnt
-				bl = False
-			if timestamp+86400*61 <= int(j[1]):
-				change = int(stock_data[start_index][2]) - int(j[2])
-				#print(stock_data[start_index][2])
-				change_rate = change/int(stock_data[start_index][2])*100
-				filedata = filedata[i+1:i+45]
-				c = 0
-				input_data = []
-				for k in filedata:
-					k = k.split()
-					input_data.append(np.float64(k[3]))
-					
-				return True,change_rate,input_data
-			stock_data[cnt] = j
-			cnt+=1
-
-	
-	return False,None,None
+from mkinput import ck_data
 
 
 
-
-
-
-
-batch_size = 50
+batch_size = 100
 
 
 X = tf.placeholder(tf.float64,[None,44])
@@ -66,15 +15,16 @@ Y = tf.placeholder(tf.float32,[None,4])
 
 e_step = tf.Variable(0,trainable=False, name='e_step')
 
-L = tf.layers.dense(X,128,activation=tf.nn.relu)
-L = tf.layers.dense(L,256,activation=tf.nn.relu)
-L = tf.layers.dense(L,128,activation=tf.nn.relu)
-L = tf.layers.dense(L,128,activation=tf.nn.relu)
+
+L = tf.layers.dense(X,2048,activation=tf.nn.leaky_relu)
+
 output = tf.layers.dense(L,4,activation = None)
+
+
 
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=Y,logits=output))
 
-optimizer = tf.train.AdamOptimizer(0.001).minimize(cost)
+optimizer = tf.train.AdamOptimizer(0.00001).minimize(cost)
 
 sess = tf.Session()
 saver = tf.train.Saver()
@@ -93,7 +43,7 @@ else:
 episode_step = sess.run(e_step)
 	
 
-for episode_step in range(episode_step+1,episode_step+101):
+for episode_step in range(episode_step+1,episode_step+100001):
 	f = open('./stockdata/code_list.txt','r')
 	code_list = f.readlines()
 	cnt = 0
@@ -110,18 +60,30 @@ for episode_step in range(episode_step+1,episode_step+101):
 	depth = 4
 	err = 0
 	s_num = 0
-	while(s_num<50):
+	up = 0
+	down = 0
+	while(s_num<batch_size):
 		ck,change_rate,input_data = ck_data(code_list[err+s_num])
 		
+
 		if ck:
+			if change_rate > 0:
+				up +=1
+			else:
+				down +=1
+
+			if (up > batch_size/2 and change_rate > 0) or (down > batch_size/2 and change_rate <= 0):
+				err += 1
+				continue
+
 			change_list.append(change_rate)
 			x_list.append(input_data)
 			s_num += 1
-			if(change_rate > 20):
+			if(change_rate > 15):
 				y = 3
 			elif(change_rate > 0):
 				y = 2
-			elif change_rate > -5:
+			elif change_rate > -10:
 				y = 1
 			else:
 				y = 0
@@ -130,27 +92,47 @@ for episode_step in range(episode_step+1,episode_step+101):
 			err+=1
 
 
-	print('\n')
+	print(up,down)
 	targets = np.array(y_list).reshape(-1)
 	one_hot_targets = np.eye(depth,dtype=float)[targets]
 	y_list = one_hot_targets
 
 
 	_,cost_val = sess.run([optimizer,cost],feed_dict={X:x_list,Y:y_list})
-	print('Epoch : ', '%04d'%(episode_step+1),'Avg.cost = ','%.9f'%(cost_val/batch_size))
+	print('Epoch : ', '%4d'%(episode_step),'Avg.cost = ','%.3f'%(cost_val/batch_size))
+	if(episode_step%50 == 0):
+		add_op = tf.assign(e_step,episode_step)
+		sess.run(add_op)
+		saver.save(sess,'./model/fs.ckpt')
+	if(episode_step%50 == 0):
+		out = tf.argmax(output,1)
+		result = sess.run([out],feed_dict={X:x_list})
+		correct = 0
+		for i in range(batch_size):
+			if(change_list[i] > 12):
+				y = 3
+			elif(change_list[i] > 0):
+				y = 2
+			elif change_list[i] > -10:
+				y = 1
+			else:
+				y = 0
+			if y == result[0][i]:
+				correct += 1
+				s = '<- correct!!!'
+			else:
+				s = ''
+			print('%3d'%(change_list[i])+ '   ' + '%2d'%(result[0][i]-2),s)
+
+		print('Accuracy : {:.1f}%'.format(correct/batch_size*100))
 
 		
 
 
 
-out = tf.argmax(output,1)
-result = sess.run([out],feed_dict={X:x_list})
-for i in range(50):
-	print(str(change_list[i]) + '  ' + str(result[0][i]))
-	
-add_op = tf.assign(e_step,episode_step)
-sess.run(add_op)
-saver.save(sess,'./model/fs.ckpt')
+
+
+
 
 
 

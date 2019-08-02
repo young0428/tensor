@@ -5,17 +5,18 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import time
 import mkstockinput
+from tensorflow.python.client import device_lib
 
 
 
-batch_size = 1000
-day = 90
+batch_size = 200
+day = 150
 n_hidden = 512
 n_class = 13*30
 
-X = tf.placeholder(tf.float32,[None,3,n_class])
+X = tf.placeholder(tf.float32,[None,5,n_class])
 Y = tf.placeholder(tf.float32,[None,n_class])
-e_step = tf.Variable(0,trainable=False, name='e_step')
+e_step = tf.Variable(0,trainable=False, name='e_step') 
 
 def generator(inputs):
 	
@@ -25,6 +26,11 @@ def generator(inputs):
 		outputs = tf.transpose(outputs,[1,0,2])
 		outputs = outputs[-1]
 		output = tf.layers.dense(outputs,512,activation=tf.nn.relu)
+		output = tf.layers.dense(output,1024,activation=tf.nn.relu)
+		output = tf.layers.dense(output,2048,activation=tf.nn.relu)
+		output = tf.layers.dense(output,4096,activation=tf.nn.relu)
+		output = tf.layers.dense(output,2048,activation=tf.nn.relu)
+		output = tf.layers.dense(output,1024,activation=tf.nn.relu)
 		output = tf.layers.dense(output,n_class,activation=None)
 
 
@@ -42,6 +48,12 @@ def discriminator(inputs,reuse=None):
 
 	return output_y
 """
+
+
+
+print(device_lib.list_local_devices())
+
+
 
 
 		
@@ -64,7 +76,7 @@ train_G = tf.train.AdamOptimizer(0.001).minimize(loss_G,var_list=vars_G)
 
 sess = tf.Session()
 saver = tf.train.Saver()
-ckpt = tf.train.get_checkpoint_state('./model2')
+ckpt = tf.train.get_checkpoint_state('./model3')
 
 
 
@@ -124,7 +136,7 @@ for episode_step in range(episode_step+1,episode_step+100001):
 	if(episode_step%50 == 0):
 		add_op = tf.assign(e_step,episode_step)
 		sess.run(add_op)
-		saver.save(sess,'./model2/stock.ckpt')
+		saver.save(sess,'./model3/stock.ckpt')
 
 		gene_y = sess.run([G],feed_dict={X:mkstockinput.x_to_rate(X_input)})
 		gene_y = gene_y[-1]
@@ -141,7 +153,7 @@ for episode_step in range(episode_step+1,episode_step+100001):
 			plt.legend(['Gene','Real'])
 
 
-		plt.savefig('./result3/{}.png'.format(str(episode_step).zfill(5)))
+		plt.savefig('./result4/{}.png'.format(str(episode_step).zfill(5)))
 
 		
 

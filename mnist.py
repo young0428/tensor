@@ -42,7 +42,7 @@ sess = tf.Session()
 init = tf.global_variables_initializer()
 sess.run(init)
 
-batch_size = 100
+batch_size = 1000
 total_batch = int(mnist.train.num_examples / batch_size)
 
 for epoch in range(10):

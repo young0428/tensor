@@ -5,27 +5,30 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import time
 import mkstockinput
+from tensorflow.python.client import device_lib
 
 
 
-batch_size = 1000
-day = 90
-n_hidden = 512
+batch_size = 150
+day = 150
+n_hidden = 1024
 n_class = 13*30
 
-X = tf.placeholder(tf.float32,[None,3,n_class])
+X = tf.placeholder(tf.float32,[None,5,n_class])
 Y = tf.placeholder(tf.float32,[None,n_class])
-e_step = tf.Variable(0,trainable=False, name='e_step')
+e_step = tf.Variable(0,trainable=False, name='e_step') 
 
 def generator(inputs):
 	
-	with tf.compat.v1.variable_scope("generator", reuse=tf.compat.v1.AUTO_REUSE):
-		cell = tf.nn.rnn_cell.BasicRNNCell(n_hidden)
-		outputs,states = tf.nn.dynamic_rnn(cell,inputs,dtype=tf.float32)
+	with tf.variable_scope("generator", reuse=tf.compat.v1.AUTO_REUSE):
+		lstm = tf.contrib.cudnn_rnn.CudnnLSTM(4,n_hidden)
+		outputs,states = lstm(inputs)
 		outputs = tf.transpose(outputs,[1,0,2])
 		outputs = outputs[-1]
 		output = tf.layers.dense(outputs,512,activation=tf.nn.relu)
+		output = tf.layers.dense(output,1024,activation=tf.nn.relu)
 		output = tf.layers.dense(output,n_class,activation=None)
+		
 
 
 
@@ -33,7 +36,7 @@ def generator(inputs):
 	return output
 """
 def discriminator(inputs,reuse=None):
-	with tf.compat.v1.variable_scope("discriminator", reuse=tf.compat.v1.AUTO_REUSE) as scope:
+	with tf.variable_scope("discriminator", reuse=tf.AUTO_REUSE) as scope:
 		
 		hidden = tf.layers.dense(inputs,512,activation=tf.nn.leaky_relu)
 		hidden = tf.layers.dense(hidden,1024,activation=tf.nn.leaky_relu)
@@ -42,6 +45,11 @@ def discriminator(inputs,reuse=None):
 
 	return output_y
 """
+
+
+
+
+
 
 
 		
@@ -60,11 +68,13 @@ loss_G = tf.reduce_mean(tf.square(G-Y))
 vars_G = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,scope='generator')
 
 #train_D = tf.train.AdamOptimizer(0.002).minimize(loss_D,var_list=vars_D)
-train_G = tf.train.AdamOptimizer(0.001).minimize(loss_G,var_list=vars_G)
+train_G = tf.train.AdamOptimizer(0.002).minimize(loss_G,var_list=vars_G)
+
+
 
 sess = tf.Session()
 saver = tf.train.Saver()
-ckpt = tf.train.get_checkpoint_state('./model2')
+ckpt = tf.train.get_checkpoint_state('../res_save/cu_model')
 
 
 
@@ -102,7 +112,7 @@ for episode_step in range(episode_step+1,episode_step+100001):
 	Y_input = []
 
 	while(s_num<batch_size):
-		ck,X_val,Y_val = mkstockinput.mk_data(code_list[err+s_num])
+		ck,X_val,Y_val = mkstockinput.mk_data(code_list[err+s_num],day)
 		if ck:
 			X_input.append(X_val)
 			Y_input.append(Y_val)
@@ -121,10 +131,10 @@ for episode_step in range(episode_step+1,episode_step+100001):
 
 	print('Epoch : ', '%-4d   '%(episode_step),'loss : %-9.4f'%(loss_G_val))
 
-	if(episode_step%50 == 0):
+	if(episode_step%200 == 0):
 		add_op = tf.assign(e_step,episode_step)
 		sess.run(add_op)
-		saver.save(sess,'./model2/stock.ckpt')
+		saver.save(sess,'../res_save/cu_model/stock.ckpt')
 
 		gene_y = sess.run([G],feed_dict={X:mkstockinput.x_to_rate(X_input)})
 		gene_y = gene_y[-1]
@@ -141,7 +151,7 @@ for episode_step in range(episode_step+1,episode_step+100001):
 			plt.legend(['Gene','Real'])
 
 
-		plt.savefig('./result3/{}.png'.format(str(episode_step).zfill(5)))
+		plt.savefig('../res_save/cu_result/{}.png'.format(str(episode_step).zfill(5)))
 
 		
 

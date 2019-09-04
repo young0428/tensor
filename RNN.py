@@ -8,7 +8,7 @@ mnist = input_data.read_data_sets("./mnist/data",one_hot=True)
 
 learning_rate = 0.001
 total_epoch = 30
-batch_size = 128
+batch_size = 1280
 
 n_input = 28
 n_step = 28

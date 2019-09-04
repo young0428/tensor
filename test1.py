@@ -1,9 +1,3 @@
-import copy
-def aa(a):
-	a[0] = 1
-
-
-c = [4,4,4]
-rate = copy.deepcopy(c)
-aa(c)
-print(rate)
+import numpy as np
+a = [1,2,3]
+print(np.float32(a))

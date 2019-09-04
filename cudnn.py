@@ -9,14 +9,19 @@ from tensorflow.python.client import device_lib
 
 
 
-batch_size = 150
+batch_size = 100
 day = 150
 n_hidden = 1024
 n_class = 13*30
 
-X = tf.placeholder(tf.float32,[None,5,n_class])
+
+X = tf.placeholder(tf.float32,[None,day/10,130])
 Y = tf.placeholder(tf.float32,[None,n_class])
-e_step = tf.Variable(0,trainable=False, name='e_step') 
+e_step = tf.Variable(0,trainable=False, name='e_step')
+
+
+los_summ = tf.placeholder(tf.float32,shape=())
+tf.summary.scalar('reward',tf.div(los_summ,10))
 
 def generator(inputs):
 	
@@ -27,25 +32,12 @@ def generator(inputs):
 		outputs = outputs[-1]
 		output = tf.layers.dense(outputs,512,activation=tf.nn.relu)
 		output = tf.layers.dense(output,1024,activation=tf.nn.relu)
+		output = tf.layers.dense(output,1024,activation=tf.nn.relu)
+		output = tf.layers.dense(output,1024,activation=tf.nn.relu)
 		output = tf.layers.dense(output,n_class,activation=None)
 		
 
-
-
-
 	return output
-"""
-def discriminator(inputs,reuse=None):
-	with tf.variable_scope("discriminator", reuse=tf.AUTO_REUSE) as scope:
-		
-		hidden = tf.layers.dense(inputs,512,activation=tf.nn.leaky_relu)
-		hidden = tf.layers.dense(hidden,1024,activation=tf.nn.leaky_relu)
-		hidden = tf.layers.dense(hidden,1024,activation=tf.nn.leaky_relu)
-		output_y = tf.layers.dense(hidden,1,activation=None)
-
-	return output_y
-"""
-
 
 
 
@@ -68,11 +60,13 @@ loss_G = tf.reduce_mean(tf.square(G-Y))
 vars_G = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,scope='generator')
 
 #train_D = tf.train.AdamOptimizer(0.002).minimize(loss_D,var_list=vars_D)
-train_G = tf.train.AdamOptimizer(0.002).minimize(loss_G,var_list=vars_G)
+train_G = tf.train.AdamOptimizer(0.001).minimize(loss_G,var_list=vars_G)
 
 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 
-sess = tf.Session()
+sess = tf.Session(config=config)
 saver = tf.train.Saver()
 ckpt = tf.train.get_checkpoint_state('../res_save/cu_model')
 
@@ -91,9 +85,12 @@ else:
 
 episode_step = sess.run(e_step)
 
+writer = tf.summary.FileWriter('./logs',sess.graph)
+summary_merged = tf.summary.merge_all()
 
 
 
+loss_val = 0
 
 for episode_step in range(episode_step+1,episode_step+100001):
 	f = open('./stockdata/code_list.txt','r')
@@ -124,12 +121,22 @@ for episode_step in range(episode_step+1,episode_step+100001):
 	loss_D_val,loss_G_val = 0,0
 
 
+
 	_,loss_G_val = sess.run([train_G,loss_G],feed_dict={X:mkstockinput.x_to_rate(X_input),Y:mkstockinput.y_to_rate(Y_input,X_input)})
 
 
 
 
 	print('Epoch : ', '%-4d   '%(episode_step),'loss : %-9.4f'%(loss_G_val))
+
+	loss_val = loss_val + loss_G_val
+
+	if (episode_step+1) % 10 == 0:
+		summary = sess.run(summary_merged, feed_dict = {los_summ:loss_val})
+		writer.add_summary(summary,episode_step)
+		loss_val = 0
+
+
 
 	if(episode_step%200 == 0):
 		add_op = tf.assign(e_step,episode_step)
@@ -167,13 +174,7 @@ for episode_step in range(episode_step+1,episode_step+100001):
 
 
 
-
-
-
-
-
 	
-
 
 
 

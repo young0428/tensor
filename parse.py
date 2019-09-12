@@ -8,7 +8,7 @@ from datetime import datetime
 codefile = open('./stockdata/code_list.txt')
 code_list = codefile.readlines()
 cnt = 0
-save = 1515
+save = 0
 for code in code_list:
 	cnt+=1
 	if(cnt < save):
@@ -19,7 +19,7 @@ for code in code_list:
 	code = code[ : -1]
 	print(code)
 
-	f = open('./stockdata/' + code + '.txt','w')
+	f = open('./stockdata_v2/' + code + '.txt','w')
 
 	url = "https://finance.daum.net/api/charts/A" + code + "/5/minutes?limit=4320&adjusted=true&to=2019-04-20%2011%3A30%3A00.0"
 	hdr = {'referer' : 'https://finance.daum.net/domestic/chart', 'user-agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36'}
@@ -35,6 +35,8 @@ for code in code_list:
 		check = False
 		for i in js['data']:
 			s = i['candleTime'].replace('.0','')
+			volume = str(i['candleAccTradeVolume'])
+			
 			time_time = s.replace(':','').replace(' ','').replace('-','')
 			if(int(int(int(time_time)%(10**6))/10**2) == 900):
 				check = True
@@ -43,7 +45,7 @@ for code in code_list:
 				dt = datetime.strptime(s,'%Y-%m-%d %H:%M:%S').timetuple()
 				timestamp = time.mktime(dt)
 				#print(timestamp)
-				string_val = string_val + str(time_time) + ' ' + str(int(timestamp)) + ' ' + str(int(i['tradePrice'])) + '\n'
+				string_val = string_val + str(time_time) + ' ' + str(int(timestamp)) + ' ' + str(int(i['tradePrice'])) + ' ' + volume + '\n'
 
 			if(int(int(int(time_time)%(10**6))/10**2) == 1500):
 				string = string + string_val

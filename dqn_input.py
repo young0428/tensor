@@ -21,11 +21,14 @@ def mk_data(code,day):
 	price_x = []
 	price_y = []
 	x_val = []
+	x_volume_val = []
 
 	for i in range(day+31):
 		for j in range(13):
 			x = stock_data[start_index + i*73 + j*6][:-1].split()[2]
+			x_volume = stock_data[start_index  + i*73 + j*6][:-1].split()[3]
 			x_val.append(np.float32(x))
+			x_volume_val.append(np.float32[x_volume])
 			#if i < 60:
 			#	y = stock_data[start_index + day*73 + i*73 + j*24][:-1].split()[2]
 			#	price_y.append(np.float32(y))
@@ -33,7 +36,7 @@ def mk_data(code,day):
 
 	
 
-	return True,x_val
+	return True,x_val,x_volume_val
 
 
 def x_to_rate(x):

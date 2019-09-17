@@ -8,20 +8,21 @@ import dqn_input
 from tensorflow.python.client import device_lib
 
 UPDATE_CNT = 0 
-UPDATE_TERM = 100
+UPDATE_TERM = 40
 batch_size = 50
 day = 30
 n_hidden = 512
 n_class = 30
 n_action = 2
-learning_rate = 0.0000001
-dropout = 0.005
-score_sum = [0,]*batch_size
+learning_rate = 1e-9
+dropout = 0.98
+real_score = [0,]*batch_size
+
 
 
 X_price = tf.placeholder(tf.float32,[None,13*day])
 X_volume = tf.placeholder(tf.float32,[None,13*day])
-Y = tf.placeholder(tf.float32,[None,n_class])
+Y = tf.placeholder(tf.float32,[None])
 A = tf.placeholder(tf.int64,[None])
 e_step = tf.Variable(0,trainable=False, name='e_step')
 
@@ -34,21 +35,27 @@ def build_net(name):
 	with tf.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE):
 
 		X = tf.expand_dims(X_price,axis=-1)
-		L1 = tf.layers.conv1d(X,16,6,activation=tf.nn.relu)
+		L1 = tf.layers.conv1d(X,16,3,activation=tf.nn.relu)
 		L1 = tf.nn.dropout(L1,dropout)
 		L1 = tf.layers.conv1d(L1,32,3,activation=tf.nn.relu)
 		L1 = tf.nn.dropout(L1,dropout)
 		L1 = tf.layers.conv1d(L1,64,3,activation=tf.nn.relu)
 		L1 = tf.contrib.layers.flatten(L1)
-		L1 = tf.layers.dense(L1,512,activation=None)
-		L1 = tf.layers.dense(L1,512,activation=None)
+		L1 = tf.layers.dense(L1,128,activation=None)
 
+		X = tf.expand_dims(X_volume,axis=-1)
+		L2 = tf.layers.conv1d(X,16,3,activation=tf.nn.relu)
+		L2 = tf.nn.dropout(L2,dropout)
+		L2 = tf.layers.conv1d(X,32,3,activation=tf.nn.relu)
+		L2 = tf.nn.dropout(L2,dropout)
+		L2 = tf.layers.conv1d(X,64,3 ,activation=tf.nn.relu)
+		L2 = tf.contrib.layers.flatten(L2)
 
-		L2 = tf.layers.dense(X_volume,128,activation=None)
+		L2 = tf.layers.dense(L2,128,activation=tf.nn.relu)
+
 
 		L = tf.concat([L1,L2],1)
-		L = tf.layers.dense(L,512,activation=tf.nn.relu)
-		L = tf.layers.dense(L,1024,activation=tf.nn.relu)
+		
 		L = tf.layers.dense(L,1024,activation=tf.nn.relu)
 		output = tf.layers.dense(L,n_action,activation=None)
 
@@ -64,36 +71,28 @@ def get_action(price,volume):
 	return action_list
 
 
-def game_play(act,x_price,e_index,poss_index,poss_bool,stp):
-	x_price = dqn_input.x_to_rate(x_price)
+def game_play(act,x_price,e_index,poss_index,poss_bool,stp,batch_size):
+	price_rate = dqn_input.x_to_rate(x_price)
 	score = [0,]*batch_size
 	for i in range(batch_size):
-		if act == 0:
-			score[i] = x_price[i][e_index+stp] - x_price[i][poss_index[i]]
+		if act[i] == 0:
+			score[i] = price_rate[i][e_index+stp] - price_rate[i][e_index]
 			if not poss_bool[i] :
 				poss_bool[i] = True
 				poss_index[i] = e_index
 
 
-		elif act == 1:
+		elif act[i] == 1:
 			score[i] = 0
 			if poss_bool[i] : 
+				real_score[i] += x_price[i][poss_index[i]] - x_price[i][e_index]
 				poss_bool[i] = False
 				poss_index[i] = -1
 
 	return score
 
 
-def update_target(self):
-	copy_op = []
 
-	main_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='main')
-	target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='target')
-
-	for main_var, target_var in zip(main_vars, target_vars):
-		copy_op.append(target_var.assign(main_var.value()))
-
-	self.sess.run(copy_op)
 
 		
 
@@ -125,6 +124,17 @@ sess = tf.Session(config=config)
 saver = tf.train.Saver()
 ckpt = tf.train.get_checkpoint_state('../res_save/cuv2_model')
 
+def update_target():
+	copy_op = []
+
+	main_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='main')
+	target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='target')
+
+	for main_var, target_var in zip(main_vars, target_vars):
+		copy_op.append(target_var.assign(main_var.value()))
+
+	sess.run(copy_op)
+
 
 
 if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
@@ -145,7 +155,6 @@ summary_merged = tf.summary.merge_all()
 
 
 
-loss_val = 0
 
 for episode_step in range(episode_step+1,episode_step+100001):
 	f = open('./stockdata/code_list.txt','r')
@@ -172,29 +181,33 @@ for episode_step in range(episode_step+1,episode_step+100001):
 		else:
 			err+=1
 
-	step = 4 # 2시간 간격 업데이트
+	step = 3 # 2시간 간격 업데이트
 	possess_index = [-1,]*batch_size
 	possess_bool = [False,]*batch_size
 	start_index = 0
 	end_index = 13*30
+	action = [0,]*batch_size
+	score_sum = [0,]*batch_size
+	loss_sum = 0
 
-	for game_start in range(13*30):
-		X_PRICE_INPUT = np.array(X_data)[:][start_index:end_index]
-		X_VOLUME_INPUT = np.array(X_vol_data)[:][start_index:end_index]
+	for game_start in range(int(13*30/3)):
+		X_PRICE_INPUT = np.array(X_data)[:,start_index:end_index]
+		X_VOLUME_INPUT = np.array(X_vol_data)[:,start_index:end_index]
 		input_Y = [0,]*batch_size
 		#  0:구매, 1:판매
-		if UPDATE_CNT < 200:
-			for j in range(batch_ssize):
-				action[j] = random.range(0,2)
+		if UPDATE_CNT < 50 and episode_step == 0:
+			for j in range(batch_size):
+				action[j] = random.randrange(0,2)
 		else:
 			action = get_action(X_PRICE_INPUT,X_VOLUME_INPUT)	
 
+		reward = game_play(action,X_data,end_index,possess_index,possess_bool,step,batch_size)
 
-		reward = game_play(action,X_data,end_index,possess_index,possess_bool,step)
-		target_Q_value = sess.run(target_Q,feed_dict={X_price:dqn_input.x_to_rate(np.array(X_data)[:][start_index+step:end_index+step]),
-													  X_volume:np.array(x_vol_data)[:][start_index+step:end_index+step]})
+		target_Q_value = sess.run(target_Q,feed_dict={X_price:dqn_input.x_to_rate(np.array(X_data)[:,start_index+step:end_index+step]),
+													  X_volume:np.array(X_vol_data)[:,start_index+step:end_index+step]})
 		for i in range(batch_size):
 			input_Y[i] = np.max(target_Q_value[i]) + reward[i]
+
 
 		avg_cost,_ = sess.run([loss,train_op],feed_dict={X_price:dqn_input.x_to_rate(X_PRICE_INPUT),
 														 X_volume:X_VOLUME_INPUT,
@@ -210,20 +223,39 @@ for episode_step in range(episode_step+1,episode_step+100001):
 
 		start_index += step
 		end_index += step
+		loss_sum += avg_cost
+	print("Epoch : %-5d"%(episode_step))
+	bene_cnt = 0
+
+	for i in range(batch_size):
+		if possess_bool:
+			real_score[i] += X_data[i][possess_index[i]] - X_data[i][end_index]
+
+	for i in range(batch_size):
+		
+		if real_score[i] > 0:
+			print("%2d : %-5.2f < ---- benefit "%(i,real_score[i]))
+			bene_cnt+=1
+		else:
+			print("%2d : %-5.2f                "%(i,real_score[i]))
+
+	print("benefit ratio : %2.3f   loss : %-9.4f"%(bene_cnt/batch_size*100,float(loss_sum/(13*30/3))))
+	q_l = sess.run(Q,feed_dict={X_price:dqn_input.x_to_rate(X_PRICE_INPUT), X_volume:X_VOLUME_INPUT})
+	print(q_l[0])
+
+	real_score = [0,]*batch_size
 
 
-
-
-	print('Epoch : ', '%-4d   '%(episode_step),'loss : %-9.4f'%(avg_cost))
+	
 
 	if (episode_step+1) % 10 == 0:
-		summary = sess.run(summary_merged, feed_dict = {los_summ:avg_cost})
+		summary = sess.run(summary_merged, feed_dict = {los_summ:float(loss_sum/13*30/3)})
 		writer.add_summary(summary,episode_step)
 		loss_val = 0
 
 
 
-	if(episode_step%50 == 0):
+	if(episode_step%10 == 0):
 		add_op = tf.assign(e_step,episode_step)
 		sess.run(add_op)
 		saver.save(sess,'../res_save/cuv2_model/stock.ckpt')

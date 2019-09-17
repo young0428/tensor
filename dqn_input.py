@@ -4,7 +4,7 @@ import time
 import numpy as np
 import copy
 def mk_data(code,day):
-	stock_f = open('./stockdata/'+code+'.txt','r')
+	stock_f = open('./stockdata_v2/'+code+'.txt','r')
 	stock_data = stock_f.readlines()
 	
 	if len(stock_data)-73*250 < 0:
@@ -28,7 +28,7 @@ def mk_data(code,day):
 			x = stock_data[start_index + i*73 + j*6][:-1].split()[2]
 			x_volume = stock_data[start_index  + i*73 + j*6][:-1].split()[3]
 			x_val.append(np.float32(x))
-			x_volume_val.append(np.float32[x_volume])
+			x_volume_val.append(np.float32(x_volume))
 			#if i < 60:
 			#	y = stock_data[start_index + day*73 + i*73 + j*24][:-1].split()[2]
 			#	price_y.append(np.float32(y))
@@ -42,33 +42,12 @@ def mk_data(code,day):
 def x_to_rate(x):
 	rate = copy.deepcopy(x)
 	for i in range(len(x)):
-		base = x[i][0][0]
+		base = x[i][0]
 		for j in range(len(x[i])):
-			for k in range(len(x[i][j])):
-				rate[i][j][k] = ((x[i][j][k]/base)-1)*100
-
+			rate[i][j] = ((x[i][j]/base)-1)*100
 
 
 	return rate
-
-def y_to_rate(y,x):
-	rate = copy.deepcopy(y)
-	for i in range(len(y)):
-		base = x[i][0][0]
-		for j in range(len(y[i])):
-			rate[i][j] = ((y[i][j]/base)-1)*100
-
-
-	return rate 
-
-def rate_to_x(rate,x):
-	res = copy.deepcopy(rate)
-	for i in range(len(rate)):
-		base = x[i][0][0]
-		for j in range(len(rate[i])):
-			res[i][j] = base*((rate[i][j]/100+1))
-
-	return res
 
 
 """

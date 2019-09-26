@@ -11,11 +11,11 @@ UPDATE_CNT = 0
 UPDATE_TERM = 40
 batch_size = 50
 day = 30
-n_hidden = 512
+n_hidden = 256
 n_class = 30
 n_action = 2
 learning_rate = 1e-9
-dropout = 0.98
+dropout = 0.02
 real_score = [0,]*batch_size
 
 
@@ -34,24 +34,20 @@ def build_net(name):
 	
 	with tf.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE):
 
-		X = tf.expand_dims(X_price,axis=-1)
-		L1 = tf.layers.conv1d(X,16,3,activation=tf.nn.relu)
-		L1 = tf.nn.dropout(L1,dropout)
-		L1 = tf.layers.conv1d(L1,32,3,activation=tf.nn.relu)
-		L1 = tf.nn.dropout(L1,dropout)
-		L1 = tf.layers.conv1d(L1,64,3,activation=tf.nn.relu)
-		L1 = tf.contrib.layers.flatten(L1)
-		L1 = tf.layers.dense(L1,128,activation=None)
+		X = tf.reshape(X_price,[batch_size,day/2,13*2])
+		lstm1 = tf.contrib.cudnn_rnn.CudnnLSTM(3,n_hidden,dropout=dropout)
+		outputs1,states = lstm(X)
+		outputs1 = tf.transpose(outputs1,[1,0,2])
+		outputs1 = outputs1[-1]
+		L1 = tf.layers.dense(outputs1,32,activation=None)
 
-		X = tf.expand_dims(X_volume,axis=-1)
-		L2 = tf.layers.conv1d(X,16,3,activation=tf.nn.relu)
-		L2 = tf.nn.dropout(L2,dropout)
-		L2 = tf.layers.conv1d(X,32,3,activation=tf.nn.relu)
-		L2 = tf.nn.dropout(L2,dropout)
-		L2 = tf.layers.conv1d(X,64,3 ,activation=tf.nn.relu)
-		L2 = tf.contrib.layers.flatten(L2)
+		X = tf.reshape(X_volume,[batch_size,day/2,13*2])
+		lstm2 = tf.contrib.cudnn_rnn.CudnnLSTM(3,n_hidden,dropout=dropout)
+		outputs2,states = lstm(inputs)
+		outputs2 = tf.transpose(outputs,[1,0,2])
+		outputs2 = outputs2[-1]
 
-		L2 = tf.layers.dense(L2,128,activation=tf.nn.relu)
+		L2 = tf.layers.dense(outputs2,128,activation=tf.nn.relu)
 
 
 		L = tf.concat([L1,L2],1)
